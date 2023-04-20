@@ -1,0 +1,730 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>CompressFrameHeader: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/For-ACGN/CompressFrameHeader/common.go (100.0%)</option>
+				
+				<option value="file1">github.com/For-ACGN/CompressFrameHeader/reader.go (100.0%)</option>
+				
+				<option value="file2">github.com/For-ACGN/CompressFrameHeader/writer.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package cfh
+
+import (
+        "encoding/binary"
+)
+
+const (
+        // MaxFrameHeaderSize is the maximum frame header.
+        MaxFrameHeaderSize = 256
+
+        // MaxDictionarySize is the maximum dictionary size.
+        MaxDictionarySize = 256
+)
+
+const (
+        cmdAddDict = 1 + iota
+        cmdData
+        cmdLast
+        cmdPrev
+)
+
+const (
+        ethernetIPv4TCPSize = 14 + 20 + 20
+        ethernetIPv4UDPSize = 14 + 20 + 8
+        ethernetIPv6TCPSize = 14 + 40 + 20
+        ethernetIPv6UDPSize = 14 + 40 + 8
+)
+
+// for select dictionary faster in slowSearchDict.
+const (
+        minDiffDiv = 10
+        maxDiffDiv = 4
+)
+
+// IsFrameHeaderPreferBeCompressed is used to check
+// frame header can be compressed by fast mode.
+// If frame header is preferred be compressed, it will
+// return the header size that be compressed.
+// It supports IPv4/IPv6 with TCP/UDP
+func IsFrameHeaderPreferBeCompressed(frame []byte) (int, bool) <span class="cov10" title="65578">{
+        if len(frame) &lt; ethernetIPv4UDPSize </span><span class="cov6" title="1069">{
+                return 0, false
+        }</span>
+        <span class="cov9" title="64509">switch binary.BigEndian.Uint16(frame[12:14]) </span>{
+        case 0x0800:<span class="cov8" title="16829"> // IPv4
+                // check version is 4 and header length is 20
+                if frame[14] != 0x45 </span><span class="cov6" title="869">{
+                        return 0, false
+                }</span>
+                <span class="cov8" title="15960">switch frame[23] </span>{
+                case 0x06:<span class="cov8" title="7395"> // TCP
+                        if len(frame) &lt; ethernetIPv4TCPSize </span><span class="cov1" title="1">{
+                                return 0, false
+                        }</span>
+                        // check header length is 20
+                        <span class="cov8" title="7394">if frame[46]&gt;&gt;4 != 0x05 </span><span class="cov5" title="396">{
+                                return 0, false
+                        }</span>
+                        <span class="cov8" title="6998">return ethernetIPv4TCPSize, true</span>
+                case 0x11:<span class="cov8" title="7676"> // UDP
+                        // fixed header length
+                        return ethernetIPv4UDPSize, true</span>
+                default:<span class="cov6" title="889">
+                        return 0, false</span>
+                }
+        case 0x86DD:<span class="cov8" title="18075"> // IPv6
+                // fixed header length
+                switch frame[20] </span>{
+                case 0x06:<span class="cov8" title="8683"> // TCP
+                        if len(frame) &lt; ethernetIPv6TCPSize </span><span class="cov1" title="1">{
+                                return 0, false
+                        }</span>
+                        // check header length is 20
+                        <span class="cov8" title="8682">if frame[66]&gt;&gt;4 != 0x05 </span><span class="cov5" title="226">{
+                                return 0, false
+                        }</span>
+                        <span class="cov8" title="8456">return ethernetIPv6TCPSize, true</span>
+                case 0x11:<span class="cov8" title="9008"> // UDP
+                        if len(frame) &lt; ethernetIPv6UDPSize </span><span class="cov1" title="1">{
+                                return 0, false
+                        }</span>
+                        // fixed header length
+                        <span class="cov8" title="9007">return ethernetIPv6UDPSize, true</span>
+                default:<span class="cov5" title="384">
+                        return 0, false</span>
+                }
+        default:<span class="cov9" title="29605">
+                return 0, false</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package cfh
+
+import (
+        "bytes"
+        "errors"
+        "fmt"
+        "io"
+)
+
+// Reader is used to decompress frame header data.
+type Reader struct {
+        r    io.Reader
+        dict [][]byte
+        buf  []byte
+        chg  []byte
+        data []byte
+        last bytes.Buffer
+        rem  bytes.Buffer
+        err  error
+}
+
+// NewReader is used to create a new compressor with 256 dictionaries.
+func NewReader(r io.Reader) *Reader <span class="cov7" title="131098">{
+        reader, err := NewReaderWithSize(r, MaxDictionarySize)
+        if err != nil </span><span class="cov1" title="1">{
+                panic(err)</span>
+        }
+        <span class="cov7" title="131097">return reader</span>
+}
+
+// NewReaderWithSize is used to create a new decompressor with custom number of dictionaries.
+func NewReaderWithSize(r io.Reader, size int) (*Reader, error) <span class="cov7" title="131099">{
+        if size &lt; 1 </span><span class="cov1" title="1">{
+                return nil, errors.New("dictionary size cannot less than 1")
+        }</span>
+        <span class="cov7" title="131098">if size &gt; MaxDictionarySize </span><span class="cov1" title="1">{
+                return nil, errors.New("dictionary size cannot greater than 256")
+        }</span>
+        <span class="cov7" title="131097">return &amp;Reader{
+                r:    r,
+                dict: make([][]byte, size),
+                buf:  make([]byte, 1),
+                chg:  make([]byte, 256),
+        }, nil</span>
+}
+
+// Read is used to decompress frame header data from the under r and copy to b.
+func (r *Reader) Read(b []byte) (int, error) <span class="cov7" title="196854">{
+        l := len(b)
+        if l &lt; 1 </span><span class="cov1" title="1">{
+                return 0, nil
+        }</span>
+        <span class="cov7" title="196853">if l &gt; MaxFrameHeaderSize </span><span class="cov1" title="1">{
+                return 0, errors.New("read with too large buffer")
+        }</span>
+        <span class="cov7" title="196852">if r.err != nil </span><span class="cov1" title="1">{
+                return 0, r.err
+        }</span>
+        <span class="cov7" title="196851">n, err := r.read(b)
+        if err != nil </span><span class="cov7" title="130356">{
+                r.err = err
+        }</span>
+        <span class="cov7" title="196851">return n, err</span>
+}
+
+func (r *Reader) read(b []byte) (int, error) <span class="cov7" title="196851">{
+        // read remaining data
+        if r.rem.Len() != 0 </span><span class="cov1" title="1">{
+                return r.rem.Read(b)
+        }</span>
+        // read command
+        <span class="cov7" title="196850">_, err := io.ReadFull(r.r, r.buf)
+        if err != nil </span><span class="cov1" title="2">{
+                return 0, fmt.Errorf("failed to read decompress command: %s", err)
+        }</span>
+        <span class="cov7" title="196848">switch cmd := r.buf[0]; cmd </span>{
+        case cmdAddDict:<span class="cov6" title="40867">
+                err = r.addDictionary()</span>
+        case cmdData:<span class="cov6" title="25769">
+                err = r.readChangedData()</span>
+        case cmdLast:<span class="cov4" title="590">
+                r.reuseLastData()</span>
+        case cmdPrev:<span class="cov4" title="545">
+                err = r.reusePreviousData()</span>
+        default:<span class="cov7" title="129077">
+                return 0, fmt.Errorf("invalid decompress command: %d", cmd)</span>
+        }
+        <span class="cov7" title="67771">if err != nil </span><span class="cov4" title="1277">{
+                return 0, err
+        }</span>
+        <span class="cov7" title="66494">n := copy(b, r.data)
+        if n &lt; len(r.data) </span><span class="cov1" title="1">{
+                r.rem.Write(r.data[n:])
+        }</span>
+        <span class="cov7" title="66494">return n, nil</span>
+}
+
+func (r *Reader) addDictionary() error <span class="cov6" title="40867">{
+        // read dictionary size
+        _, err := io.ReadFull(r.r, r.buf)
+        if err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("failed to read dictionary size: %s", err)
+        }</span>
+        <span class="cov6" title="40866">size := int(r.buf[0])
+        if size &lt; 1 </span><span class="cov1" title="4">{
+                return errors.New("read empty dictionary")
+        }</span>
+        // read dictionary data
+        <span class="cov6" title="40862">dict := make([]byte, size)
+        _, err = io.ReadFull(r.r, dict)
+        if err != nil </span><span class="cov4" title="270">{
+                return fmt.Errorf("failed to read dictionary data: %s", err)
+        }</span>
+        // remove the oldest dictionary
+        <span class="cov6" title="40592">for i := len(r.dict) - 1; i &gt; 0; i-- </span><span class="cov10" title="10350960">{
+                r.dict[i] = r.dict[i-1]
+        }</span>
+        <span class="cov6" title="40592">r.dict[0] = dict
+        // update status
+        r.data = dict
+        r.updateLast(dict)
+        return nil</span>
+}
+
+func (r *Reader) readChangedData() error <span class="cov6" title="25769">{
+        // read dictionary index
+        _, err := io.ReadFull(r.r, r.buf)
+        if err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("failed to read dictionary index: %s", err)
+        }</span>
+        <span class="cov6" title="25768">idx := int(r.buf[0])
+        dict := r.dict[idx]
+        if len(dict) &lt; 1 </span><span class="cov4" title="504">{
+                return fmt.Errorf("read invalid dictionary index: %d", idx)
+        }</span>
+        // read the number of changed data
+        <span class="cov6" title="25264">_, err = io.ReadFull(r.r, r.buf)
+        if err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("failed to read the number of changed data: %s", err)
+        }</span>
+        // read changed data
+        <span class="cov6" title="25263">size := int(r.buf[0] * 2)
+        if size &gt; len(dict)*2 </span><span class="cov1" title="1">{
+                return fmt.Errorf("read invalid changed data size: %d", size/2)
+        }</span>
+        <span class="cov6" title="25262">_, err = io.ReadFull(r.r, r.chg[:size])
+        if err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("failed to read changed data: %s", err)
+        }</span>
+        // extract data and update dictionary
+        <span class="cov6" title="25261">var dataIdx byte
+        maxIdx := byte(len(dict) - 1)
+        for i := 0; i &lt; size; i += 2 </span><span class="cov7" title="180701">{
+                dataIdx = r.chg[i]
+                if dataIdx &gt; maxIdx </span><span class="cov1" title="1">{
+                        return fmt.Errorf("invalid changed data index: %d", dataIdx)
+                }</span>
+                <span class="cov7" title="180700">dict[dataIdx] = r.chg[i+1]</span>
+        }
+        // update status
+        <span class="cov6" title="25260">r.data = dict
+        r.moveDictionary(idx)
+        r.updateLast(dict)
+        return nil</span>
+}
+
+func (r *Reader) reuseLastData() <span class="cov4" title="590">{
+        r.data = r.last.Bytes()
+}</span>
+
+func (r *Reader) reusePreviousData() error <span class="cov4" title="545">{
+        // read dictionary index
+        _, err := io.ReadFull(r.r, r.buf)
+        if err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("failed to read dictionary index: %s", err)
+        }</span>
+        <span class="cov4" title="544">idx := int(r.buf[0])
+        dict := r.dict[idx]
+        if len(dict) &lt; 1 </span><span class="cov4" title="492">{
+                return fmt.Errorf("read invalid dictionary index: %d", idx)
+        }</span>
+        // update status
+        <span class="cov3" title="52">r.data = dict
+        r.moveDictionary(idx)
+        r.updateLast(dict)
+        return nil</span>
+}
+
+func (r *Reader) moveDictionary(idx int) <span class="cov6" title="25312">{
+        if idx == 0 </span><span class="cov6" title="18748">{
+                return
+        }</span>
+        <span class="cov5" title="6564">dict := r.dict[idx]
+        for i := idx; i &gt; 0; i-- </span><span class="cov7" title="188521">{
+                r.dict[i] = r.dict[i-1]
+        }</span>
+        <span class="cov5" title="6564">r.dict[0] = dict</span>
+}
+
+func (r *Reader) updateLast(data []byte) <span class="cov7" title="65904">{
+        r.last.Reset()
+        r.last.Write(data)
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package cfh
+
+import (
+        "bytes"
+        "errors"
+        "fmt"
+        "io"
+)
+
+// Searcher is used to fast search dictionaries for custom frame header.
+// Dict is the Writer inner saved dictionaries.
+// If cannot to search the target dictionary, return the index -1.
+type Searcher = func(dict [][]byte, header []byte) (index int)
+
+// Writer is used to compress frame header data.
+type Writer struct {
+        w    io.Writer
+        ses  map[int]Searcher
+        dict [][]byte
+        last bytes.Buffer
+        chg  bytes.Buffer
+        buf  bytes.Buffer
+        err  error
+}
+
+// NewWriter is used to create a new compressor with 256 dictionaries.
+func NewWriter(w io.Writer) *Writer <span class="cov2" title="15">{
+        writer, err := NewWriterWithSize(w, MaxDictionarySize)
+        if err != nil </span><span class="cov1" title="1">{
+                panic(err)</span>
+        }
+        <span class="cov2" title="14">return writer</span>
+}
+
+// NewWriterWithSize is used to create a new compressor with custom number of dictionaries.
+func NewWriterWithSize(w io.Writer, size int) (*Writer, error) <span class="cov2" title="16">{
+        if size &lt; 1 </span><span class="cov1" title="1">{
+                return nil, errors.New("dictionary size cannot less than 1")
+        }</span>
+        <span class="cov2" title="15">if size &gt; MaxDictionarySize </span><span class="cov1" title="1">{
+                return nil, errors.New("dictionary size cannot greater than 256")
+        }</span>
+        <span class="cov2" title="14">return &amp;Writer{
+                w:    w,
+                dict: make([][]byte, size),
+        }, nil</span>
+}
+
+// Write is used to compress frame header data and write to the under w.
+func (w *Writer) Write(b []byte) (int, error) <span class="cov7" title="65773">{
+        l := len(b)
+        if l &lt; 1 </span><span class="cov1" title="1">{
+                return 0, nil
+        }</span>
+        <span class="cov7" title="65772">if l &gt; MaxFrameHeaderSize </span><span class="cov1" title="1">{
+                return 0, errors.New("write too large data")
+        }</span>
+        <span class="cov7" title="65771">if w.err != nil </span><span class="cov1" title="1">{
+                return 0, w.err
+        }</span>
+        <span class="cov7" title="65770">n, err := w.write(b)
+        if err != nil </span><span class="cov1" title="3">{
+                w.err = err
+        }</span>
+        <span class="cov7" title="65770">return n, err</span>
+}
+
+func (w *Writer) write(b []byte) (int, error) <span class="cov7" title="65770">{
+        n := len(b)
+        w.buf.Reset()
+        // check data is as same as the last
+        if bytes.Equal(w.last.Bytes(), b) </span><span class="cov3" title="107">{
+                w.buf.WriteByte(cmdLast)
+                _, err := w.w.Write(w.buf.Bytes())
+                if err != nil </span><span class="cov1" title="1">{
+                        return 0, err
+                }</span>
+                <span class="cov3" title="106">return n, nil</span>
+        }
+        // search the dictionary
+        <span class="cov7" title="65663">idx := w.searchDictionary(b)
+        if idx == -1 </span><span class="cov6" title="40350">{
+                w.buf.WriteByte(cmdAddDict)
+                w.buf.WriteByte(byte(n))
+                w.buf.Write(b)
+                _, err := w.w.Write(w.buf.Bytes())
+                if err != nil </span><span class="cov1" title="1">{
+                        return 0, err
+                }</span>
+                <span class="cov6" title="40349">w.addDictionary(b)
+                w.updateLast(b)
+                return n, nil</span>
+        }
+        // compare the new data with the dictionary
+        <span class="cov6" title="25313">dict := w.dict[idx]
+        for i := 0; i &lt; n; i++ </span><span class="cov9" title="3066702">{
+                if dict[i] == b[i] </span><span class="cov9" title="2886002">{
+                        continue</span>
+                }
+                <span class="cov7" title="180700">w.chg.WriteByte(byte(i))
+                w.chg.WriteByte(b[i])
+                // update dictionary data
+                dict[i] = b[i]</span>
+        }
+        <span class="cov6" title="25313">if w.chg.Len() == 0 </span><span class="cov3" title="53">{
+                w.buf.WriteByte(cmdPrev)
+                w.buf.WriteByte(byte(idx))
+        }</span> else<span class="cov6" title="25260"> {
+                w.buf.WriteByte(cmdData)
+                w.buf.WriteByte(byte(idx))
+                w.buf.WriteByte(byte(w.chg.Len() / 2))
+                w.buf.Write(w.chg.Bytes())
+                w.chg.Reset()
+        }</span>
+        // write the actual changed data
+        <span class="cov6" title="25313">_, err := w.w.Write(w.buf.Bytes())
+        if err != nil </span><span class="cov1" title="1">{
+                return 0, err
+        }</span>
+        // move the dictionary to the top
+        <span class="cov6" title="25312">w.moveDictionary(idx)
+        w.updateLast(b)
+        return n, nil</span>
+}
+
+func (w *Writer) searchDictionary(header []byte) int <span class="cov7" title="65663">{
+        size := len(header)
+        if w.ses != nil </span><span class="cov2" title="35">{
+                if searcher, ok := w.ses[size]; ok </span><span class="cov1" title="3">{
+                        return searcher(w.dict, header)
+                }</span>
+        }
+        <span class="cov7" title="65660">switch </span>{
+        case size == ethernetIPv4TCPSize:<span class="cov6" title="9720">
+                return w.fastSearchDictEthernetIPv4TCP(header)</span>
+        case size == ethernetIPv4UDPSize:<span class="cov6" title="9398">
+                return w.fastSearchDictEthernetIPv4UDP(header)</span>
+        case size == ethernetIPv6TCPSize:<span class="cov6" title="9596">
+                return w.fastSearchDictEthernetIPv6TCP(header)</span>
+        case size == ethernetIPv6UDPSize:<span class="cov6" title="9442">
+                return w.fastSearchDictEthernetIPv6UDP(header)</span>
+        default:<span class="cov6" title="27504">
+                return w.slowSearchDict(header)</span>
+        }
+}
+
+func (w *Writer) fastSearchDictEthernetIPv4TCP(header []byte) int <span class="cov6" title="9720">{
+        const offset = 14 + (20 - 4*2)
+        var dict []byte
+        headerP1 := header[:6+6]
+        headerP2 := header[offset : offset+4+4+2+2]
+        for i := 0; i &lt; len(w.dict); i++ </span><span class="cov9" title="2098288">{
+                dict = w.dict[i]
+                if len(dict) != len(header) </span><span class="cov8" title="1681663">{
+                        continue</span>
+                }
+                // Ethernet dst/src address
+                <span class="cov8" title="416625">if !bytes.Equal(dict[:6+6], headerP1) </span><span class="cov8" title="356351">{
+                        continue</span>
+                }
+                // IPv4 src/dst address, TCP/UDP src/dst port
+                <span class="cov7" title="60274">if !bytes.Equal(dict[offset:offset+4+4+2+2], headerP2) </span><span class="cov7" title="58564">{
+                        continue</span>
+                }
+                <span class="cov5" title="1710">return i</span>
+        }
+        <span class="cov6" title="8010">return -1</span>
+}
+
+func (w *Writer) fastSearchDictEthernetIPv4UDP(header []byte) int <span class="cov6" title="9398">{
+        const offset = 14 + (20 - 4*2)
+        var dict []byte
+        headerP1 := header[:6+6]
+        headerP2 := header[offset : offset+4+4+2+2]
+        for i := 0; i &lt; len(w.dict); i++ </span><span class="cov9" title="1999130">{
+                dict = w.dict[i]
+                if len(dict) != len(header) </span><span class="cov8" title="1620874">{
+                        continue</span>
+                }
+                // Ethernet dst/src address
+                <span class="cov8" title="378256">if !bytes.Equal(dict[:6+6], headerP1) </span><span class="cov8" title="314316">{
+                        continue</span>
+                }
+                // IPv4 src/dst address, UDP src/dst port
+                <span class="cov7" title="63940">if !bytes.Equal(dict[offset:offset+4+4+2+2], headerP2) </span><span class="cov7" title="62154">{
+                        continue</span>
+                }
+                <span class="cov5" title="1786">return i</span>
+        }
+        <span class="cov5" title="7612">return -1</span>
+}
+
+func (w *Writer) fastSearchDictEthernetIPv6TCP(header []byte) int <span class="cov6" title="9596">{
+        const offset = 14 + (40 - 16*2)
+        var dict []byte
+        headerP1 := header[:6+6]
+        headerP2 := header[offset : offset+16+16+2+2]
+        for i := 0; i &lt; len(w.dict); i++ </span><span class="cov9" title="2178180">{
+                dict = w.dict[i]
+                if len(dict) != len(header) </span><span class="cov9" title="1729067">{
+                        continue</span>
+                }
+                // Ethernet dst/src address
+                <span class="cov8" title="449113">if !bytes.Equal(dict[:6+6], headerP1) </span><span class="cov7" title="253998">{
+                        continue</span>
+                }
+                // IPv6 src/dst address, TCP/UDP src/dst port
+                <span class="cov7" title="195115">if !bytes.Equal(dict[offset:offset+16+16+2+2], headerP2) </span><span class="cov7" title="193850">{
+                        continue</span>
+                }
+                <span class="cov4" title="1265">return i</span>
+        }
+        <span class="cov6" title="8331">return -1</span>
+}
+
+func (w *Writer) fastSearchDictEthernetIPv6UDP(header []byte) int <span class="cov6" title="9442">{
+        const offset = 14 + (40 - 16*2)
+        var dict []byte
+        headerP1 := header[:6+6]
+        headerP2 := header[offset : offset+16+16+2+2]
+        for i := 0; i &lt; len(w.dict); i++ </span><span class="cov9" title="1900449">{
+                dict = w.dict[i]
+                if len(dict) != len(header) </span><span class="cov8" title="1557373">{
+                        continue</span>
+                }
+                // Ethernet dst/src address
+                <span class="cov8" title="343076">if !bytes.Equal(dict[:6+6], headerP1) </span><span class="cov7" title="152426">{
+                        continue</span>
+                }
+                // IPv6 src/dst address, UDP src/dst port
+                <span class="cov7" title="190650">if !bytes.Equal(dict[offset:offset+16+16+2+2], headerP2) </span><span class="cov7" title="188429">{
+                        continue</span>
+                }
+                <span class="cov5" title="2221">return i</span>
+        }
+        <span class="cov5" title="7221">return -1</span>
+}
+
+func (w *Writer) slowSearchDict(header []byte) int <span class="cov6" title="27504">{
+        var (
+                dict []byte
+                diff int
+        )
+        minDiff := len(header) / minDiffDiv
+        maxDiff := len(header) / maxDiffDiv
+        curDiff := MaxFrameHeaderSize
+        dictIdx := -1
+next:
+        for i := 0; i &lt; len(w.dict); i++ </span><span class="cov9" title="4700379">{
+                dict = w.dict[i]
+                if len(dict) != len(header) </span><span class="cov9" title="4677013">{
+                        continue</span>
+                }
+                // compare difference
+                <span class="cov6" title="23366">diff = 0
+                for j := 0; j &lt; len(dict); j++ </span><span class="cov9" title="2848948">{
+                        if dict[j] == header[j] </span><span class="cov9" title="2511966">{
+                                continue</span>
+                        }
+                        <span class="cov8" title="336982">diff++
+                        // if change a lot, skip current dictionary
+                        if diff &gt; maxDiff </span><span class="cov5" title="5036">{
+                                continue next</span>
+                        }
+                }
+                // if change a little, select current dictionary
+                <span class="cov6" title="18330">if diff &lt;= minDiff </span><span class="cov6" title="9179">{
+                        return i
+                }</span>
+                // update current minimum difference
+                <span class="cov6" title="9151">if diff &lt; curDiff </span><span class="cov6" title="9151">{
+                        curDiff = diff
+                        dictIdx = i
+                }</span>
+        }
+        <span class="cov6" title="18325">return dictIdx</span>
+}
+
+func (w *Writer) addDictionary(data []byte) <span class="cov6" title="40349">{
+        // remove the oldest dictionary
+        for i := len(w.dict) - 1; i &gt; 0; i-- </span><span class="cov10" title="10288995">{
+                w.dict[i] = w.dict[i-1]
+        }</span>
+        <span class="cov6" title="40349">dict := make([]byte, len(data))
+        copy(dict, data)
+        w.dict[0] = dict</span>
+}
+
+func (w *Writer) moveDictionary(idx int) <span class="cov6" title="25312">{
+        if idx == 0 </span><span class="cov6" title="18748">{
+                return
+        }</span>
+        <span class="cov5" title="6564">dict := w.dict[idx]
+        for i := idx; i &gt; 0; i-- </span><span class="cov7" title="188521">{
+                w.dict[i] = w.dict[i-1]
+        }</span>
+        <span class="cov5" title="6564">w.dict[0] = dict</span>
+}
+
+func (w *Writer) updateLast(data []byte) <span class="cov7" title="65661">{
+        w.last.Reset()
+        w.last.Write(data)
+}</span>
+
+// RegisterSearcher is used to register custom searcher
+// for fast search dictionaries with custom frame header.
+// Size is the target frame header size.
+func (w *Writer) RegisterSearcher(size int, searcher Searcher) error <span class="cov1" title="3">{
+        if w.ses == nil </span><span class="cov1" title="2">{
+                w.ses = make(map[int]Searcher, 1)
+        }</span>
+        <span class="cov1" title="3">if _, ok := w.ses[size]; ok </span><span class="cov1" title="1">{
+                return fmt.Errorf("searcher with size %d is already registered", size)
+        }</span>
+        <span class="cov1" title="2">w.ses[size] = searcher
+        return nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
